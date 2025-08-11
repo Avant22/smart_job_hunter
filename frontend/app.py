@@ -1,3 +1,9 @@
+import os, sys
+from pathlib import Path
+import streamlit as st
+for k, v in st.secrets.items():
+    os.environ[str(k)] = str(v)
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 # frontend/app.py
 
 import sys, os
@@ -20,6 +26,8 @@ RESUMES_DIR.mkdir(parents=True, exist_ok=True)  # ensure upload dir exists
 
 st.set_page_config(page_title="Smart Job Hunter", layout="centered")
 st.title("🚀 Smart Job Hunter")
+mode = os.getenv("USE_SIMULATION", "false").lower()
+st.caption(f"Mode: {'SIMULATION' if mode=='true' else 'LIVE'}")
 st.markdown("Upload your resume and select (or auto-detect) a job posting to get AI-powered feedback.")
 
 # Load jobs using absolute path
