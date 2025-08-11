@@ -2,8 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # local dev: read .env
-
+load_dotenv()  # local dev .env
 USE_SIM = os.getenv("USE_SIMULATION", "false").lower() == "true"
 
 PROMPT_TEMPLATE = """
@@ -20,16 +19,16 @@ Please provide:
 """
 
 def generate_feedback(resume_text: str, job_text: str) -> str:
-    # --- SIMULATION: no OpenAI import/call here ---
+    # --- SIMULATION: absolutely no OpenAI import/calls here ---
     if USE_SIM:
         return (
             "Simulated feedback:\n"
             "- Add missing keywords from the job (SaaS, CRM/HubSpot, onboarding).\n"
-            "- Quantify achievements (users/%/time saved) and add metrics.\n"
+            "- Quantify achievements (users/%/time saved).\n"
             "- Align bullets with responsibilities; mirror job phrasing and tools."
         )
 
-    # --- LIVE: import OpenAI only when needed ---
+    # --- LIVE: only import/call OpenAI inside this branch ---
     try:
         from openai import OpenAI
         client = OpenAI()  # reads OPENAI_API_KEY from env/secrets
@@ -40,12 +39,10 @@ def generate_feedback(resume_text: str, job_text: str) -> str:
             messages=[{"role": "user", "content": prompt}],
         )
         return resp.choices[0].message.content
-
     except Exception as e:
-        # Fail safe: never crash the UI
         return (
             f"(Simulation fallback due to API error: {e})\n"
             "- Add missing keywords from the job (SaaS, CRM/HubSpot, onboarding).\n"
-            "- Quantify achievements (users/%/time saved) and add metrics.\n"
+            "- Quantify achievements (users/%/time saved).\n"
             "- Align bullets with responsibilities; mirror job phrasing and tools."
         )

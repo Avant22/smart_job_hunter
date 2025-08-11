@@ -16,33 +16,29 @@ def find_best_match(resume: str, jobs: dict) -> tuple[str | None, float]:
     if not jobs:
         return None, 0.0
 
-    # --- SIM: cheap keyword overlap (no API calls) ---
     if USE_SIM:
         scores = {name: _jaccard(resume, txt) for name, txt in jobs.items()}
         best = max(scores, key=scores.get)
         return best, scores[best]
 
-    # --- LIVE: embeddings + cosine similarity ---
+    # LIVE (optional)
     try:
         from openai import OpenAI
         from sklearn.metrics.pairwise import cosine_similarity
 
         client = OpenAI()
+        def embed(t: str):
+            v = client.embeddings.create(model="text-embedding-3-small", input=t)
+            return v.data[0].embedding
 
-        def embed(text: str):
-            out = client.embeddings.create(model="text-embedding-3-small", input=text)
-            return out.data[0].embedding
-
-        emb_resume = [embed(resume)]
-        best_name, best_score = None, -1.0
+        r = [embed(resume)]
+        best, best_score = None, -1.0
         for name, txt in jobs.items():
-            emb_job = [embed(txt)]
-            score = float(cosine_similarity(emb_resume, emb_job)[0][0])
+            score = float(cosine_similarity(r, [embed(txt)])[0][0])
             if score > best_score:
-                best_name, best_score = name, score
-        return best_name, best_score
+                best, best_score = name, score
+        return best, best_score
     except Exception:
-        # If anything fails in LIVE, fall back to SIM scoring
         scores = {name: _jaccard(resume, txt) for name, txt in jobs.items()}
         best = max(scores, key=scores.get)
         return best, scores[best]
