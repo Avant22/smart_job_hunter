@@ -1,9 +1,9 @@
+# backend/prompt_engine.py
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # local dev: read .env if present
+load_dotenv()  # local dev: read .env
 
-# If USE_SIMULATION=true → return a canned response (no API calls)
 USE_SIM = os.getenv("USE_SIMULATION", "false").lower() == "true"
 
 PROMPT_TEMPLATE = """
@@ -20,21 +20,32 @@ Please provide:
 """
 
 def generate_feedback(resume_text: str, job_text: str) -> str:
+    # --- SIMULATION: no OpenAI import/call here ---
     if USE_SIM:
         return (
             "Simulated feedback:\n"
-            "- Add missing keywords from the job posting (SaaS, CRM, onboarding).\n"
-            "- Quantify achievements (users, %, time saved).\n"
-            "- Align bullet phrasing with responsibilities and tools listed."
+            "- Add missing keywords from the job (SaaS, CRM/HubSpot, onboarding).\n"
+            "- Quantify achievements (users/%/time saved) and add metrics.\n"
+            "- Align bullets with responsibilities; mirror job phrasing and tools."
         )
 
-    # LIVE mode
-    from openai import OpenAI
-    client = OpenAI()  # reads OPENAI_API_KEY from env/secrets
+    # --- LIVE: import OpenAI only when needed ---
+    try:
+        from openai import OpenAI
+        client = OpenAI()  # reads OPENAI_API_KEY from env/secrets
 
-    prompt = PROMPT_TEMPLATE.format(job_text=job_text, resume_text=resume_text)
-    resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return resp.choices[0].message.content
+        prompt = PROMPT_TEMPLATE.format(job_text=job_text, resume_text=resume_text)
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.choices[0].message.content
+
+    except Exception as e:
+        # Fail safe: never crash the UI
+        return (
+            f"(Simulation fallback due to API error: {e})\n"
+            "- Add missing keywords from the job (SaaS, CRM/HubSpot, onboarding).\n"
+            "- Quantify achievements (users/%/time saved) and add metrics.\n"
+            "- Align bullets with responsibilities; mirror job phrasing and tools."
+        )
