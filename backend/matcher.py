@@ -3,7 +3,7 @@ import os, re
 from dotenv import load_dotenv
 
 load_dotenv()
-USE_SIM = os.getenv("USE_SIMULATION", "false").lower() == "true"
+USE_SIM = os.getenv("USE_SIMULATION", "true").lower() == "true"
 
 def _tokens(s: str) -> set[str]:
     return set(re.findall(r"\b[a-z]{3,}\b", s.lower()))

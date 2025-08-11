@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()  # local dev .env
-USE_SIM = os.getenv("USE_SIMULATION", "false").lower() == "true"
+USE_SIM = os.getenv("USE_SIMULATION", "true").lower() == "true"
 
 PROMPT_TEMPLATE = """
 You are an expert AI Software Developer coach.
