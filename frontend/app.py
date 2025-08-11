@@ -57,3 +57,6 @@ if uploaded:
         feedback = generate_feedback(resume_text, job_text)
         st.subheader("🧠 AI Feedback")
         st.text_area("", feedback, height=300)
+        from backend.prompt_engine_v2 import generate_feedback, USE_SIM
+# ...
+feedback = generate_feedback(resume_text, job_text)

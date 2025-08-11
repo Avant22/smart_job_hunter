@@ -1,15 +1,20 @@
-# backend/job_loader.py
 import os
-from pathlib import Path
+
+FALLBACK_JOB_TEXT = """Customer Success Manager at SaaSCo
+Responsibilities: onboarding, CRM (HubSpot/Salesforce), churn reduction, stakeholder management.
+"""
 
 def load_jobs(folder: str) -> dict:
-    p = Path(folder)
-    if not p.exists():
-        return {}
     jobs = {}
-    for txt in p.glob("*.txt"):
-        try:
-            jobs[txt.name] = txt.read_text(encoding="utf-8")
-        except Exception:
-            pass
+    if not os.path.isdir(folder):
+        # Return a default job so the app always runs on Streamlit
+        jobs["job_customer_success_manager.txt"] = FALLBACK_JOB_TEXT
+        return jobs
+
+    for fn in os.listdir(folder):
+        if fn.endswith(".txt"):
+            with open(os.path.join(folder, fn), "r") as f:
+                jobs[fn] = f.read()
+    if not jobs:
+        jobs["job_customer_success_manager.txt"] = FALLBACK_JOB_TEXT
     return jobs
