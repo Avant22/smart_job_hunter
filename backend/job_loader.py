@@ -1,9 +1,15 @@
+# backend/job_loader.py
 import os
+from pathlib import Path
 
 def load_jobs(folder: str) -> dict:
+    p = Path(folder)
+    if not p.exists():
+        return {}
     jobs = {}
-    for fn in os.listdir(folder):
-        if fn.endswith(".txt"):
-            with open(os.path.join(folder, fn), "r") as f:
-                jobs[fn] = f.read()
+    for txt in p.glob("*.txt"):
+        try:
+            jobs[txt.name] = txt.read_text(encoding="utf-8")
+        except Exception:
+            pass
     return jobs
