@@ -2,9 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-# Load .env for local dev; on Streamlit Cloud we use st.secrets (forwarded by the app)
-load_dotenv()
-
+load_dotenv()  # local dev .env
 USE_SIM = os.getenv("USE_SIMULATION", "true").lower() == "true"
 
 PROMPT_TEMPLATE = """
@@ -21,10 +19,7 @@ Please provide:
 """
 
 def generate_feedback(resume_text: str, job_text: str) -> str:
-    """
-    Returns simulated feedback if USE_SIM==true.
-    Otherwise calls OpenAI Chat Completions (>=1.0 API) safely.
-    """
+    # --- SIMULATION: absolutely no OpenAI import/calls here ---
     if USE_SIM:
         return (
             "Simulated feedback:\n"
@@ -33,11 +28,10 @@ def generate_feedback(resume_text: str, job_text: str) -> str:
             "- Align bullets with responsibilities; mirror job phrasing and tools."
         )
 
-    # LIVE mode
+    # --- LIVE: only import/call OpenAI inside this branch ---
     try:
-        # Import inside the live branch so SIM mode never imports openai
         from openai import OpenAI
-        client = OpenAI()  # Reads OPENAI_API_KEY from env (set by Streamlit app)
+        client = OpenAI()  # reads OPENAI_API_KEY from env/secrets
 
         prompt = PROMPT_TEMPLATE.format(job_text=job_text, resume_text=resume_text)
         resp = client.chat.completions.create(
@@ -46,7 +40,6 @@ def generate_feedback(resume_text: str, job_text: str) -> str:
         )
         return resp.choices[0].message.content or "(No content returned)"
     except Exception as e:
-        # Graceful fallback to simulated advice
         return (
             f"(Simulation fallback due to API error: {e})\n"
             "- Add missing keywords from the job (SaaS, CRM/HubSpot, onboarding).\n"

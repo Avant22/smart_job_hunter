@@ -15,7 +15,6 @@ def load_jobs(folder: str | Path) -> Dict[str, str]:
             try:
                 jobs[fn.name] = fn.read_text(encoding="utf-8", errors="ignore")
             except Exception:
-                # Skip files we can't read cleanly
                 continue
 
     if not jobs:
