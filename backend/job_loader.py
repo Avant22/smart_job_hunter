@@ -1,20 +1,37 @@
-import os
+# backend/job_loader.py
+from pathlib import Path
+from typing import Dict
 
-FALLBACK_JOB_TEXT = """Customer Success Manager at SaaSCo
-Responsibilities: onboarding, CRM (HubSpot/Salesforce), churn reduction, stakeholder management.
-"""
+def load_jobs(folder: str | Path) -> Dict[str, str]:
+    """
+    Load *.txt job postings from a folder.
+    If the folder is missing or empty, return a built-in sample job.
+    """
+    p = Path(folder)
+    jobs: Dict[str, str] = {}
 
-def load_jobs(folder: str) -> dict:
-    jobs = {}
-    if not os.path.isdir(folder):
-        # Return a default job so the app always runs on Streamlit
-        jobs["job_customer_success_manager.txt"] = FALLBACK_JOB_TEXT
-        return jobs
+    if p.exists() and p.is_dir():
+        for fn in sorted(p.glob("*.txt")):
+            try:
+                jobs[fn.name] = fn.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                # Skip files we can't read cleanly
+                continue
 
-    for fn in os.listdir(folder):
-        if fn.endswith(".txt"):
-            with open(os.path.join(folder, fn), "r") as f:
-                jobs[fn] = f.read()
     if not jobs:
-        jobs["job_customer_success_manager.txt"] = FALLBACK_JOB_TEXT
+        jobs["sample_job.txt"] = (
+            "Title: Junior AI/ML Engineer\n"
+            "Company: ExampleCo\n"
+            "Responsibilities:\n"
+            "- Build small NLP utilities in Python\n"
+            "- Clean and process text data\n"
+            "- Write Streamlit prototypes\n"
+            "Requirements:\n"
+            "- Python, pandas, scikit-learn basics\n"
+            "- Prompt engineering familiarity\n"
+            "- Clear communication\n"
+            "Nice to have:\n"
+            "- FastAPI, embeddings, vector search\n"
+        )
+
     return jobs

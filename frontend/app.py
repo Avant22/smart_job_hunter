@@ -1,62 +1,87 @@
-import os, sys
-from pathlib import Path
-import streamlit as st
-for k, v in st.secrets.items():
-    os.environ[str(k)] = str(v)
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 # frontend/app.py
-
-import sys, os
+import os
 from pathlib import Path
 
-# Make project root importable (keep this if you already added it)
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
-
 import streamlit as st
-from backend.resume_parser import parse_resume
 from backend.job_loader import load_jobs
-from backend.matcher import find_best_match
-from backend.prompt_engine import generate_feedback
+from backend.resume_parser import parse_resume  # assumes you already have this
+from backend.prompt_engine import generate_feedback  # uses SIM by default
 
-# 🔧 Resolve paths from project root no matter where Streamlit runs
-BASE_DIR = Path(__file__).resolve().parents[1]
-JOBS_DIR = BASE_DIR / "data" / "jobs"
-RESUMES_DIR = BASE_DIR / "data" / "resumes"
-RESUMES_DIR.mkdir(parents=True, exist_ok=True)  # ensure upload dir exists
-
-st.set_page_config(page_title="Smart Job Hunter", layout="centered")
+# ----- Page config
+st.set_page_config(page_title="Smart Job Hunter", page_icon="🚀", layout="centered")
 st.title("🚀 Smart Job Hunter")
-mode = os.getenv("USE_SIMULATION", "false").lower()
-st.caption(f"Mode: {'SIMULATION' if mode=='true' else 'LIVE'}")
-st.markdown("Upload your resume and select (or auto-detect) a job posting to get AI-powered feedback.")
+st.caption("Upload your resume and pick (or paste) a job posting to get AI feedback.")
 
-# Load jobs using absolute path
-jobs = load_jobs(str(JOBS_DIR))
-job_names = list(jobs.keys())
-if not job_names:
-    st.warning("No job files found in `data/jobs`. Add one or more `.txt` job postings to the repo.")
+# ----- Wire up secrets → env (so OpenAI client can read them)
+# If these keys are in Streamlit Secrets, forward them into env vars:
+if "OPENAI_API_KEY" in st.secrets:
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+if "USE_SIMULATION" in st.secrets:
+    os.environ["USE_SIMULATION"] = str(st.secrets["USE_SIMULATION"])
 
-uploaded = st.file_uploader("Upload Resume (PDF or DOCX)", type=["pdf", "docx"])
-selected_job = st.selectbox("Or choose a job posting", ["<Auto-detect>"] + job_names)
+# Show current mode
+use_sim = os.getenv("USE_SIMULATION", "true").lower() == "true"
+st.info(f"Mode: **{'SIMULATION' if use_sim else 'LIVE (OpenAI)'}**", icon="⚙️")
+
+# ----- Load jobs (robust: works without data/jobs present)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+JOBS_DIR = PROJECT_ROOT / "data" / "jobs"
+
+@st.cache_data(show_spinner=False)
+def _load_jobs_cached(path: Path):
+    return load_jobs(path)
+
+jobs = _load_jobs_cached(JOBS_DIR)
+job_names = sorted(jobs.keys())
+
+# Always include a "Paste job text..." option
+PASTE_OPTION = "➕ Paste a job posting..."
+job_options = [PASTE_OPTION] + job_names
+selected_job = st.selectbox("Select a job posting:", job_options, index=0)
+
+# If user wants to paste a job
+manual_job_text = ""
+if selected_job == PASTE_OPTION:
+    manual_job_text = st.text_area("Paste the job posting here:", height=200)
+
+# ----- Resume upload
+uploaded = st.file_uploader("Upload your resume (PDF / DOCX / TXT)", type=["pdf", "docx", "txt"])
+resume_text = ""
 
 if uploaded:
-    save_path = RESUMES_DIR / uploaded.name
-    with open(save_path, "wb") as f:
-        f.write(uploaded.getbuffer())
-    resume_text = parse_resume(str(save_path))
+    try:
+        resume_text = parse_resume(uploaded)
+        st.success("Resume parsed successfully.")
+        with st.expander("Preview parsed resume text"):
+            st.text_area("", resume_text, height=200)
+    except Exception as e:
+        st.error(f"Couldn't parse your resume: {e}")
 
-    if selected_job == "<Auto-detect>" and jobs:
-        best_job, score = find_best_match(resume_text, jobs)
-        st.write(f"🔍 **Best match:** {best_job} (score: {score:.2f})")
-        job_to_use = best_job
+# ----- Action
+# Define job_text safely in all paths so we never hit NameError
+job_text = manual_job_text if selected_job == PASTE_OPTION else jobs.get(selected_job, "")
+
+col1, col2 = st.columns([1, 2])
+with col1:
+    run = st.button("Get Feedback", type="primary")
+
+if run:
+    # Validate inputs before calling backend
+    if not resume_text.strip():
+        st.error("Please upload a resume first.")
+    elif not job_text.strip():
+        st.error("Please select a job or paste a job posting.")
     else:
-        job_to_use = selected_job if selected_job in jobs else None
+        with st.spinner("Analyzing…"):
+            feedback = generate_feedback(resume_text, job_text)
 
-    if job_to_use and st.button("Get Feedback"):
-        job_text = jobs[job_to_use]
-        feedback = generate_feedback(resume_text, job_text)
         st.subheader("🧠 AI Feedback")
         st.text_area("", feedback, height=300)
-        from backend.prompt_engine_v2 import generate_feedback, USE_SIM
-# ...
-feedback = generate_feedback(resume_text, job_text)
+
+# Optional dev helpers (enable by adding ALLOW_DEV_TOOLS='true' in secrets)
+if st.secrets.get("ALLOW_DEV_TOOLS", "false").lower() == "true":
+    st.sidebar.header("Dev tools")
+    if st.sidebar.button("🔁 Clear cache & rerun"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.experimental_rerun()
