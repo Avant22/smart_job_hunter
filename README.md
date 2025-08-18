@@ -12,6 +12,7 @@ It parses resumes, matches them against job postings using embeddings, and gener
 
 ## Live Demo 🌍
 Try it here: [Smart Job Hunter on Hugging Face](https://huggingface.co/spaces/avant22/smart_job_hunter)
+Try it here: [Sreamlit Smart Job Hunter] (https://smartjobhunter-dhapp9zcysw58amaw2wdnsr.streamlit.app/)  
 
 ---
 
@@ -107,3 +108,4 @@ This app is part of a **portfolio project** showing:
 ## Links
 - 🔗 [Source Code on GitHub](https://github.com/Avant22/smart_job_hunter)  
 - 🌍 [Live Hugging Face Demo](https://huggingface.co/spaces/avant22/smart_job_hunter)  
+
